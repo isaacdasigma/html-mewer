@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Code Viewer & Runner | HTML, JS, Python</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Pyodide for Python Execution in Browser -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    /* Dark Far Left Sidebar */
+    .sidebar-btn {
+      width: 100%;
+      background-color: #f3f4f6;
+      color: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .sidebar-btn:hover { background-color: #ffffff; }
+    .sidebar-btn:active { transform: scale(0.98); }
+    .dark-mode .sidebar-btn {
+      background-color: #334155;
+      color: #f8fafc;
+      border-color: #64748b;
+    }
+    .dark-mode .sidebar-btn:hover { background-color: #475569; }
+    .line-numbers {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5rem;
+      user-select: none;
+      text-align: right;
+      color: #94a3b8;
+    }
+    textarea {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5rem;
+      resize: none;
+      outline: none;
+      white-space: pre;
+    }
+    .ad-placeholder {
+      background: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px);
+      border: 1px dashed #cbd5e1;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden transition-colors duration-200" id="appBody">
+
+  <!-- TOP AD SECTION (Header Leaderboard 728x90 / Responsive) -->
+  <header class="bg-white border-b border-slate-300 px-4 py-2 flex flex-col md:flex-row items-center justify-between gap-2 z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 text-white font-black px-2.5 py-1 rounded text-sm tracking-wider">RUNNER</div>
+      <h1 class="text-base font-bold text-slate-800">Online Code Viewer & Sandbox</h1>
+    </div>
+
+    <!-- AdSense Header Slot -->
+    <div class="w-full md:w-[728px] h-[60px] ad-placeholder flex items-center justify-center text-xs text-slate-400 font-medium rounded relative overflow-hidden">
+      <!-- GOOGLE ADSENSE CODE HERE -->
+      <span><i class="fa-solid fa-rectangle-ad mr-1.5 text-slate-400"></i> Advertisement Space (728x90 Leaderboard)</span>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- FAR-LEFT DARK SIDEBAR -->
+    <aside class="w-48 bg-[#2d3035] p-2.5 flex flex-col gap-2 shrink-0 overflow-y-auto z-20">
+      
+      <!-- Language Selector -->
+      <div class="mb-1">
+        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Language</label>
+        <select id="langSelect" onchange="changeLanguage(this.value)" class="w-full bg-slate-800 text-white text-xs font-semibold rounded p-1.5 border border-slate-600 focus:outline-none cursor-pointer">
+          <option value="html">HTML / CSS / JS</option>
+          <option value="js">JavaScript (Node/Browser)</option>
+          <option value="python">Python 3 (Pyodide)</option>
+        </select>
+      </div>
+
+      <hr class="border-slate-700 my-0.5">
+
+      <!-- Action Buttons -->
+      <button class="sidebar-btn" onclick="toggleFullPreview()">
+        <i class="fa-solid fa-eye text-slate-600"></i> Preview (Full page)
+      </button>
+      
+      <button class="sidebar-btn" onclick="toggleHighlight()">
+        <i class="fa-solid fa-highlighter text-slate-600"></i> Highlight Mode
+      </button>
+
+      <button class="sidebar-btn" onclick="formatCode()">
+        <i class="fa-solid fa-bars-staggered text-slate-600"></i> Format Code
+      </button>
+
+      <button class="sidebar-btn" onclick="runCodeManual()">
+        <i class="fa-solid fa-play text-green-600"></i> Run / Execute
+      </button>
+
+      <button class="sidebar-btn" onclick="loadSample()">
+        <i class="fa-solid fa-file-code text-slate-600"></i> Load Sample
+      </button>
+
+      <button class="sidebar-btn" onclick="clearCode()">
+        <i class="fa-solid fa-trash-can text-slate-600"></i> Clear
+      </button>
+
+      <button class="sidebar-btn" onclick="document.getElementById('fileInput').click()">
+        <i class="fa-solid fa-upload text-slate-600"></i> Import from file
+      </button>
+      <input type="file" id="fileInput" class="hidden" accept=".html,.js,.py,.txt" onchange="importFile(event)">
+
+      <button class="sidebar-btn" onclick="exportFile()">
+        <i class="fa-solid fa-download text-slate-600"></i> Export to file
+      </button>
+
+      <button class="sidebar-btn" onclick="toggleDarkMode()">
+        <i class="fa-solid fa-moon text-slate-600"></i> <span id="darkBtnText">Dark mode</span>
+      </button>
+
+      <div class="mt-auto pt-2 border-t border-slate-700 text-[10px] text-slate-400 text-center">
+        Client-side & Safe
+      </div>
+    </aside>
+
+    <!-- SPLIT WORKSPACE: EDITOR & PREVIEW -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-200 gap-px">
+
+      <!-- LEFT: CODE EDITOR PANE -->
+      <section id="editorPane" class="flex-1 flex flex-col bg-white overflow-hidden relative">
+        <div class="bg-slate-100 border-b border-slate-300 px-3 py-1.5 flex items-center justify-between text-xs text-slate-600 font-semibold">
+          <span id="editorLabel"><i class="fa-brands fa-html5 text-orange-600 mr-1.5"></i> HTML Editor</span>
+          <div class="flex items-center gap-3 text-[11px] text-slate-500">
+            <span id="lineCount">Lines: 1</span>
+            <span id="charCount">Chars: 0</span>
+          </div>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden relative bg-white">
+          <div id="lineNumbers" class="line-numbers w-10 py-3 pr-2 bg-slate-50 border-r border-slate-200 select-none overflow-hidden">1</div>
+          <textarea id="codeEditor" spellcheck="false" class="flex-1 p-3 border-none bg-transparent text-slate-900 font-mono focus:outline-none overflow-auto" placeholder="Type or paste your code here..." oninput="handleInput()" onscroll="syncScroll()"></textarea>
+        </div>
+      </section>
+
+      <!-- RIGHT: OUTPUT / PREVIEW PANE -->
+      <section id="previewPane" class="flex-1 flex flex-col bg-white overflow-hidden relative border-l border-slate-300">
+        <div class="bg-slate-100 border-b border-slate-300 px-3 py-1.5 flex items-center justify-between text-xs text-slate-600 font-semibold">
+          <span id="outputLabel"><i class="fa-solid fa-desktop mr-1.5 text-blue-600"></i> Live Preview</span>
+          <div class="flex items-center gap-2">
+            <span id="pyStatus" class="hidden text-[11px] text-amber-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Pyodide Loading...</span>
+            <button onclick="clearConsole()" id="clearConsoleBtn" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded text-[10px]">Clear Output</button>
+            <button onclick="popoutWindow()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Popout</button>
+          </div>
+        </div>
+
+        <div class="flex-1 relative bg-white overflow-hidden flex flex-col">
+          <iframe id="previewIframe" class="w-full h-full border-none bg-white" sandbox="allow-scripts allow-modals allow-forms"></iframe>
+          <div id="consoleTerminal" class="hidden w-full h-full bg-slate-900 text-green-400 p-4 font-mono text-xs overflow-auto whitespace-pre-wrap leading-relaxed"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- BOTTOM AD SECTION (Footer Banner 728x90 / Responsive) -->
+  <footer class="bg-white border-t border-slate-300 px-4 py-1.5 flex items-center justify-center shrink-0 z-10">
+    <div class="w-full md:w-[728px] h-[50px] ad-placeholder flex items-center justify-center text-xs text-slate-400 font-medium rounded relative overflow-hidden">
+      <!-- GOOGLE ADSENSE CODE HERE -->
+      <span><i class="fa-solid fa-rectangle-ad mr-1.5 text-slate-400"></i> Bottom Ad Space (Leaderboard Banner)</span>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentLang = 'html';
+    let pyodideInstance = null;
+    let pyodideReady = false;
+
+    const editor = document.getElementById('codeEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+    const iframe = document.getElementById('previewIframe');
+    const consoleTerm = document.getElementById('consoleTerminal');
+    const pyStatus = document.getElementById('pyStatus');
+    const clearConsoleBtn = document.getElementById('clearConsoleBtn');
+
+    const SAMPLES = {
+      html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; background: #f0fdf4; }
+    h1 { color: #15803d; }
+    button { background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Hello from HTML Previewer!</h1>
+  <p>Edit on the left to see live changes on the right.</p>
+  <button onclick="alert('It works!')">Click Me</button>
+</body>
+</html>`,
+      js: `// JavaScript Live Sandbox
+console.log("Initializing JavaScript Execution...");
+
+function calculateStats(numbers) {
+  const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+  const avg = sum / numbers.length;
+  return { sum, avg };
+}
+
+const data = [10, 20, 30, 40, 50];
+console.log("Input Array:", data);
+console.log("Calculated Stats:", calculateStats(data));
+console.warn("This is an example warning log!");
+`,
+      python: `# Python 3 In-Browser Runner (Pyodide)
+import math
+
+def generate_fibonacci(n):
+    fib = [0, 1]
+    for i in range(2, n):
+        fib.append(fib[-1] + fib[-2])
+    return fib
+
+print("Executing Python 3 Script...")
+print("Square Root of 144:", math.sqrt(144))
+print("Fibonacci Sequence (First 10):", generate_fibonacci(10))
+`
+    };
+
+    function handleInput() {
+      updateLineNumbers();
+      updateCounts();
+      if (currentLang === 'html') {
+        renderHTML();
+      }
+    }
+
+    function syncScroll() {
+      lineNumbers.scrollTop = editor.scrollTop;
+    }
+
+    function updateLineNumbers() {
+      const lines = editor.value.split('\n').length;
+      let lineStr = '';
+      for (let i = 1; i <= lines; i++) {
+        lineStr += i + '<br>';
+      }
+      lineNumbers.innerHTML = lineStr;
+    }
+
+    function updateCounts() {
+      const text = editor.value;
+      const lines = text.split('\n').length;
+      document.getElementById('lineCount').innerText = 'Lines: ' + lines;
+      document.getElementById('charCount').innerText = 'Chars: ' + text.length;
+    }
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const label = document.getElementById('editorLabel');
+      const outLabel = document.getElementById('outputLabel');
+
+      if (lang === 'html') {
+        label.innerHTML = '<i class="fa-brands fa-html5 text-orange-600 mr-1.5"></i> HTML Editor';
+        outLabel.innerHTML = '<i class="fa-solid fa-desktop mr-1.5 text-blue-600"></i> Live Preview';
+        iframe.classList.remove('hidden');
+        consoleTerm.classList.add('hidden');
+        clearConsoleBtn.classList.add('hidden');
+        pyStatus.classList.add('hidden');
+        renderHTML();
+      } else if (lang === 'js') {
+        label.innerHTML = '<i class="fa-brands fa-js text-yellow-500 mr-1.5"></i> JavaScript Editor';
+        outLabel.innerHTML = '<i class="fa-solid fa-terminal mr-1.5 text-green-600"></i> Console Output';
+        iframe.classList.add('hidden');
+        consoleTerm.classList.remove('hidden');
+        clearConsoleBtn.classList.remove('hidden');
+        pyStatus.classList.add('hidden');
+        runJS();
+      } else if (lang === 'python') {
+        label.innerHTML = '<i class="fa-brands fa-python text-blue-500 mr-1.5"></i> Python Editor';
+        outLabel.innerHTML = '<i class="fa-solid fa-terminal mr-1.5 text-green-600"></i> Python Terminal';
+        iframe.classList.add('hidden');
+        consoleTerm.classList.remove('hidden');
+        clearConsoleBtn.classList.remove('hidden');
+        initPyodideAndRun();
+      }
+    }
+
+    function renderHTML() {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(editor.value);
+      doc.close();
+    }
+
+    function runJS() {
+      consoleTerm.innerText = '';
+      const logs = [];
+      const customConsole = {
+        log: (...args) => logs.push('[LOG] ' + args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : a).join(' ')),
+        warn: (...args) => logs.push('[WARN] ' + args.join(' ')),
+        error: (...args) => logs.push('[ERROR] ' + args.join(' '))
+      };
+
+      try {
+        const runFn = new Function('console', editor.value);
+        runFn(customConsole);
+        consoleTerm.innerText = logs.length > 0 ? logs.join('\n') : 'Code executed cleanly with no output.';
+      } catch (err) {
+        consoleTerm.innerText = logs.join('\n') + '\n[RUNTIME ERROR]: ' + err.message;
+      }
+    }
+
+    async function initPyodideAndRun() {
+      if (!pyodideReady) {
+        pyStatus.classList.remove('hidden');
+        consoleTerm.innerText = 'Loading Pyodide Python WebAssembly Engine... Please wait...';
+        try {
+          pyodideInstance = await loadPyodide();
+          pyodideReady = true;
+          pyStatus.classList.add('hidden');
+        } catch (err) {
+          consoleTerm.innerText = 'Error loading Pyodide: ' + err.message;
+          return;
+        }
+      }
+      runPython();
+    }
+
+    async function runPython() {
+      if (!pyodideInstance) return;
+      consoleTerm.innerText = 'Running Python code...\n';
+      pyodideInstance.setStdout({ batched: (str) => { consoleTerm.innerText += str + '\n'; } });
+      pyodideInstance.setStderr({ batched: (str) => { consoleTerm.innerText += '[STDERR] ' + str + '\n'; } });
+      
+      try {
+        await pyodideInstance.runPythonAsync(editor.value);
+      } catch (err) {
+        consoleTerm.innerText += '\n[PYTHON ERROR]: ' + err.message;
+      }
+    }
+
+    function runCodeManual() {
+      if (currentLang === 'html') renderHTML();
+      else if (currentLang === 'js') runJS();
+      else if (currentLang === 'python') runPython();
+    }
+
+    function loadSample() {
+      editor.value = SAMPLES[currentLang];
+      handleInput();
+      runCodeManual();
+    }
+
+    function clearCode() {
+      editor.value = '';
+      handleInput();
+      if (currentLang === 'html') renderHTML();
+      else consoleTerm.innerText = '';
+    }
+
+    function clearConsole() {
+      consoleTerm.innerText = '';
+    }
+
+    function formatCode() {
+      let code = editor.value;
+      if (currentLang === 'html') {
+        let formatted = '';
+        let indent = '';
+        code.split(/>\s*</).forEach(node => {
+          if (node.match(/^\/\w/)) indent = indent.substring(2);
+          formatted += indent + '<' + node + '>\n';
+          if (node.match(/^<?\w[^>]*[^\/]$/) && !node.startsWith("input") && !node.startsWith("img")) indent += '  ';
+        });
+        editor.value = formatted.trim().substring(1, formatted.length - 2);
+      }
+      handleInput();
+    }
+
+    function toggleFullPreview() {
+      const editorPane = document.getElementById('editorPane');
+      editorPane.classList.toggle('hidden');
+    }
+
+    function toggleHighlight() {
+      editor.classList.toggle('bg-yellow-50');
+    }
+
+    function toggleDarkMode() {
+      const body = document.getElementById('appBody');
+      body.classList.toggle('dark-mode');
+      body.classList.toggle('bg-slate-900');
+      document.getElementById('darkBtnText').innerText = body.classList.contains('dark-mode') ? 'Light mode' : 'Dark mode';
+    }
+
+    function importFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        editor.value = evt.target.result;
+        handleInput();
+        runCodeManual();
+      };
+      reader.readAsText(file);
+    }
+
+    function exportFile() {
+      const extMap = { html: 'index.html', js: 'script.js', python: 'main.py' };
+      const mimeMap = { html: 'text/html', js: 'text/javascript', python: 'text/x-python' };
+      const blob = new Blob([editor.value], { type: mimeMap[currentLang] });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = extMap[currentLang];
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function popoutWindow() {
+      if (currentLang === 'html') {
+        const win = window.open('', '_blank');
+        win.document.write(editor.value);
+        win.document.close();
+      } else {
+        alert('Popout window is available for HTML Live Preview mode.');
+      }
+    }
+
+    updateLineNumbers();
+  </script>
+</body>
+</html>
