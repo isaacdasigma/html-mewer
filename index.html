@@ -141,6 +141,7 @@
 
       <!-- LEFT: CODE EDITOR PANE -->
       <section id="editorPane" class="flex-1 flex flex-col bg-white overflow-hidden relative">
+        <!-- Editor Bar -->
         <div class="bg-slate-100 border-b border-slate-300 px-3 py-1.5 flex items-center justify-between text-xs text-slate-600 font-semibold">
           <span id="editorLabel"><i class="fa-brands fa-html5 text-orange-600 mr-1.5"></i> HTML Editor</span>
           <div class="flex items-center gap-3 text-[11px] text-slate-500">
@@ -149,6 +150,7 @@
           </div>
         </div>
 
+        <!-- Textarea with Line Numbers -->
         <div class="flex-1 flex overflow-hidden relative bg-white">
           <div id="lineNumbers" class="line-numbers w-10 py-3 pr-2 bg-slate-50 border-r border-slate-200 select-none overflow-hidden">1</div>
           <textarea id="codeEditor" spellcheck="false" class="flex-1 p-3 border-none bg-transparent text-slate-900 font-mono focus:outline-none overflow-auto" placeholder="Type or paste your code here..." oninput="handleInput()" onscroll="syncScroll()"></textarea>
@@ -157,15 +159,30 @@
 
       <!-- RIGHT: OUTPUT / PREVIEW PANE -->
       <section id="previewPane" class="flex-1 flex flex-col bg-white overflow-hidden relative border-l border-slate-300">
+        <!-- Preview Bar -->
         <div class="bg-slate-100 border-b border-slate-300 px-3 py-1.5 flex items-center justify-between text-xs text-slate-600 font-semibold">
           <span id="outputLabel"><i class="fa-solid fa-desktop mr-1.5 text-blue-600"></i> Live Preview</span>
           <div class="flex items-center gap-2">
             <span id="pyStatus" class="hidden text-[11px] text-amber-600 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Pyodide Loading...</span>
             <button onclick="clearConsole()" id="clearConsoleBtn" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded text-[10px]">Clear Output</button>
-            <button onclick="popoutWindow()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Popout</button>
+            
+            <!-- PROMINENT POPOUT BUTTON -->
+            <button onclick="popoutWindow()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded text-xs transition-all shadow-sm flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Popout
+            </button>
           </div>
         </div>
 
+        <!-- USER NOTICE BANNER -->
+        <div id="popoutNotice" class="bg-amber-50 border-b border-amber-200 px-3 py-2 text-xs text-amber-900 flex items-center justify-between font-medium">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+            <span><strong>Notice:</strong> To render and run your web page, click <button onclick="popoutWindow()" class="underline font-bold hover:text-blue-700">Popout</button> in the top right.</span>
+          </div>
+          <button onclick="document.getElementById('popoutNotice').style.display='none'" class="text-amber-500 hover:text-amber-800 text-xs font-bold px-1">&times;</button>
+        </div>
+
+        <!-- Display Frame (HTML iframe OR JS/Python Console) -->
         <div class="flex-1 relative bg-white overflow-hidden flex flex-col">
           <iframe id="previewIframe" class="w-full h-full border-none bg-white" sandbox="allow-scripts allow-modals allow-forms"></iframe>
           <div id="consoleTerminal" class="hidden w-full h-full bg-slate-900 text-green-400 p-4 font-mono text-xs overflow-auto whitespace-pre-wrap leading-relaxed"></div>
@@ -393,8 +410,7 @@ print("Fibonacci Sequence (First 10):", generate_fibonacci(10))
     }
 
     function toggleFullPreview() {
-      const editorPane = document.getElementById('editorPane');
-      editorPane.classList.toggle('hidden');
+      popoutWindow();
     }
 
     function toggleHighlight() {
@@ -435,10 +451,14 @@ print("Fibonacci Sequence (First 10):", generate_fibonacci(10))
     function popoutWindow() {
       if (currentLang === 'html') {
         const win = window.open('', '_blank');
-        win.document.write(editor.value);
-        win.document.close();
+        if (win) {
+          win.document.write(editor.value || '<h1>No code entered yet</h1>');
+          win.document.close();
+        } else {
+          alert('Pop-up blocked! Please allow pop-ups for this site to view the preview window.');
+        }
       } else {
-        alert('Popout window is available for HTML Live Preview mode.');
+        alert('Popout window is designed for HTML Live Preview mode.');
       }
     }
 
